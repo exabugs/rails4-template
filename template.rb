@@ -30,6 +30,30 @@ def html_to_haml(source)
   end
 end
 
+# Patch
+
+create_file 'config/initializers/bson/object_id.rb' do
+<<-CODE
+module Moped
+  module BSON
+    ObjectId = ::BSON::ObjectId
+
+    class Document < Hash
+      class << self
+        def deserialize(io, document = new)
+          __bson_load__(io, document)
+        end
+
+        def serialize(document, io = "")
+          document.__bson_dump__(io)
+        end
+      end
+    end
+  end
+end
+CODE
+end
+
 # Questions
 
 app_long_name = ask "What is your Application name?"
