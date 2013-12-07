@@ -54,6 +54,24 @@ end
 CODE
 end
 
+create_file 'config/initializers/time_formats.rb' do
+<<-CODE
+Time::DATE_FORMATS[:default] = '%Y-%m-%d %H:%M:%S'
+CODE
+end
+
+gsub_file 'config/application.rb', "# config.time_zone = 'Central Time (US & Canada)'", "config.time_zone = 'Tokyo'"
+gsub_file 'config/application.rb', "# config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]", "config.i18n.load_path += Dir[Rails.root.join('config', 'locales', '**', '*.{rb,yml}')]"
+#gsub_file 'config/application.rb', "# config.i18n.default_locale = :de", "config.i18n.default_locale = :ja\n    config.i18n.enforce_available_locales = true"
+gsub_file 'config/application.rb', "# config.i18n.default_locale = :de", "config.i18n.enforce_available_locales = true\n    config.i18n.default_locale = :ja"
+
+remove_file "config/locales/en.yml"
+get "https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/en.yml", "config/locales/en.yml"
+get "https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.yml", "config/locales/ja.yml"
+
+# for NetBeans
+copy_file "bin/rails", "script/rails"
+
 # Questions
 
 app_long_name = ask "What is your Application name?"
@@ -62,9 +80,13 @@ install_oauth_provider = yes? "Install OAuth provider?"
 
 # Gems
 
+append_to_file 'Gemfile', "\nENV['NOKOGIRI_USE_SYSTEM_LIBRARIES'] = 'YES'"
+gem 'nokogiri', '1.6.0'
+
 gem 'unicorn'
 gem 'haml-rails'
-gem 'mongoid', '~> 4', github: 'mongoid/mongoid'
+#gem 'mongoid', '~> 4', github: 'mongoid/mongoid'
+gem 'mongoid', github: 'mongoid/mongoid'
 gem 'haml-rails'
 gem 'anjlab-bootstrap-rails', require: 'bootstrap-rails',
                               github: 'anjlab/bootstrap-rails'
@@ -133,6 +155,8 @@ environment app_generators_config
 # Install and configure gems
 
 run 'bundle install'
+
+generate 'scaffold', 'User', 'firstname:string', 'lastname:string', 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
 
 generate 'figaro:install'
 generate 'mongoid:config'
@@ -264,6 +288,8 @@ Dir["app/views/devise/**/*.erb"].each do |file|
   erb_to_haml(file)
 end
 
+get "https://raw.github.com/Junsuke/miscellaneous/master/devise.ja.yml", "config/locales/devise.ja.yml"
+
 git add: "-A"
 git commit: %Q{ -m 'add devise' }
 
@@ -292,6 +318,16 @@ end
 # Initialize guard
 run "bundle exec guard init rspec"
 
+
+# User
+
+inject_into_file 'app/models/user.rb', "\n  include Mongoid::Timestamps", after: '  include Mongoid::Document'
+gsub_file 'app/models/user.rb', "  field :email, type: String\n", ""
+gsub_file 'app/models/user.rb', "  field :sign_in_count, type: Integer\n", ""
+gsub_file 'app/models/user.rb', "  field :current_sign_in_at, type: Time\n", ""
+gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
+gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
+gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
 
 git add: "-A"
 git commit: %Q{ -m 'add guard' }
