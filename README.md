@@ -8,9 +8,7 @@ Template for Rails 4 - Twitter Bootstrap 3, Haml, Devise, CanCan, Mongoid, Doork
 ```
 mkdir myapp
 cd myapp
-rvm use ruby-1.9.3@myapp --create
-gem install rails
-rails new . -m https://raw.github.com/sinetris/rails4-template/master/template.rb -T -O
+rails new . -m template.rb -T -O
 ```
 
 ## TODO ##
