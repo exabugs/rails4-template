@@ -62,8 +62,13 @@ end
 
 gsub_file 'config/application.rb', "# config.time_zone = 'Central Time (US & Canada)'", "config.time_zone = 'Tokyo'"
 gsub_file 'config/application.rb', "# config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]", "config.i18n.load_path += Dir[Rails.root.join('config', 'locales', '**', '*.{rb,yml}')]"
-#gsub_file 'config/application.rb', "# config.i18n.default_locale = :de", "config.i18n.default_locale = :ja\n    config.i18n.enforce_available_locales = true"
-gsub_file 'config/application.rb', "# config.i18n.default_locale = :de", "config.i18n.enforce_available_locales = true\n    config.i18n.default_locale = :ja"
+gsub_file 'config/application.rb', "# config.i18n.default_locale = :de" do
+<<-CODE
+config.i18n.enforce_available_locales = true
+    config.i18n.default_locale = :ja
+    config.i18n.fallbacks = true
+CODE
+end
 
 remove_file "config/locales/en.yml"
 get "https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/en.yml", "config/locales/en.yml"
@@ -295,6 +300,7 @@ git commit: %Q{ -m 'add devise' }
 
 generate :controller, 'home', 'index'
 gsub_file 'config/routes.rb', /get "home\/index"/, "root 'home#index'"
+gsub_file 'config/routes.rb', "devise_for :users", "devise_for :user"
 
 git add: "-A"
 git commit: %Q{ -m 'add homepage view and root route' }
@@ -328,6 +334,15 @@ gsub_file 'app/models/user.rb', "  field :current_sign_in_at, type: Time\n", ""
 gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
 gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
 gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
+
+inject_into_file 'app/controllers/application_controller.rb', before: 'end' do
+<<-CODE
+  rescue_from CanCan::AccessDenied do |exception|
+    redirect_to root_url, :alert => exception.message
+  end
+CODE
+end
+
 
 git add: "-A"
 git commit: %Q{ -m 'add guard' }
