@@ -357,7 +357,7 @@ end
 
 # AccessLog
 
-generate 'scaffold', 'access_log', 'time:time', 'user:string', 'host:string', 'http_method:string', 'uri:string', 'apptime:integer'
+generate 'scaffold', 'access_log', 'time:time', 'host:string', 'http:string', 'path:string', 'apptime:integer'
 
 inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
 <<-CODE
@@ -374,10 +374,10 @@ inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
       log = AccessLog.new
       log.time = time_a
       log.apptime = (time_b.to_r - time_a.to_r) * 1000
-      log.uri = request.original_fullpath
-      log.method = request.request_method
+      log.path = request.original_fullpath
+      log.http = request.request_method
       log.host = request.remote_ip
-      log.user = current_user.email
+      log.user = current_user
       log.save
     end
 
@@ -388,11 +388,26 @@ end
 
 inject_into_file 'app/models/access_log.rb', before: /^end/ do
 <<-CODE
+  belongs_to :user
 
   default_scope order_by(:time => :desc).limit(15)
 CODE
 end
 
+gsub_file 'app/controllers/access_logs_controller.rb', 'AccessLog.all', 'AccessLog.includes(:user).all'
+inject_into_file 'app/views/access_logs/index.html.haml', "\n    %th User", after: '%th Time'
+inject_into_file 'app/views/access_logs/index.html.haml', "\n      %td= access_log.user.email", after: '%td= access_log.time'
+
+
+# Log
+
+inject_into_file 'config/environments/development.rb', before: /^end/ do
+<<-CODE
+
+  Mongoid.logger.level = Logger::DEBUG
+  Moped.logger.level = Logger::DEBUG
+CODE
+end
 
 git add: "-A"
 git commit: %Q{ -m 'add guard' }
