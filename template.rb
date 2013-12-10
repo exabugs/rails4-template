@@ -161,7 +161,7 @@ environment app_generators_config
 
 run 'bundle install'
 
-generate 'scaffold', 'User', 'firstname:string', 'lastname:string', 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
+generate 'scaffold', 'User', 'first_name:string', 'last_name:string', 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
 
 generate 'figaro:install'
 generate 'mongoid:config'
@@ -237,6 +237,10 @@ create_file 'app/views/layouts/_navigation.html.haml' do
     %ul.nav.navbar-nav
       %li
         %a{href: root_path} Home
+      %li
+        %a{href: users_path} Users
+      %li
+        %a{href: access_logs_path} AccessLogs
     %ul.nav.navbar-nav.navbar-right
       - if user_signed_in?
         %li
@@ -293,14 +297,21 @@ Dir["app/views/devise/**/*.erb"].each do |file|
   erb_to_haml(file)
 end
 
+inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
+<<-CODE
+
+  before_filter :authenticate_user!
+CODE
+end
+
 get "https://raw.github.com/Junsuke/miscellaneous/master/devise.ja.yml", "config/locales/devise.ja.yml"
 
 git add: "-A"
 git commit: %Q{ -m 'add devise' }
 
 generate :controller, 'home', 'index'
-gsub_file 'config/routes.rb', /get "home\/index"/, "root 'home#index'"
-gsub_file 'config/routes.rb', "devise_for :users", "devise_for :user"
+gsub_file 'config/routes.rb', 'get "home/index"', "root 'home#index'"
+gsub_file 'config/routes.rb', 'devise_for :users', "devise_for :user"
 
 git add: "-A"
 git commit: %Q{ -m 'add homepage view and root route' }
@@ -335,11 +346,50 @@ gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
 gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
 gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
 
-inject_into_file 'app/controllers/application_controller.rb', before: 'end' do
+inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
 <<-CODE
+
   rescue_from CanCan::AccessDenied do |exception|
     redirect_to root_url, :alert => exception.message
   end
+CODE
+end
+
+# AccessLog
+
+generate 'scaffold', 'access_log', 'time:time', 'user:string', 'host:string', 'http_method:string', 'uri:string', 'apptime:integer'
+
+inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
+<<-CODE
+
+  around_filter :logging_filter
+
+  def logging_filter
+
+    time_a = Time.now
+    ret = yield
+    time_b = Time.now
+
+    if user_signed_in?
+      log = AccessLog.new
+      log.time = time_a
+      log.apptime = (time_b.to_r - time_a.to_r) * 1000
+      log.uri = request.original_fullpath
+      log.method = request.request_method
+      log.host = request.remote_ip
+      log.user = current_user.email
+      log.save
+    end
+
+    return ret
+  end
+CODE
+end
+
+inject_into_file 'app/models/access_log.rb', before: /^end/ do
+<<-CODE
+
+  default_scope order_by(:time => :desc).limit(15)
 CODE
 end
 
