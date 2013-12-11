@@ -161,7 +161,8 @@ environment app_generators_config
 
 run 'bundle install'
 
-generate 'scaffold', 'User', 'first_name:string', 'last_name:string', 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
+generate 'scaffold', 'User', 'first_name:string', 'last_name:string'
+#, 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
 
 generate 'figaro:install'
 generate 'mongoid:config'
@@ -313,6 +314,39 @@ generate :controller, 'home', 'index'
 gsub_file 'config/routes.rb', 'get "home/index"', "root 'home#index'"
 gsub_file 'config/routes.rb', 'devise_for :users', "devise_for :user"
 
+# User
+
+inject_into_file 'app/models/user.rb', "\n  include Mongoid::Timestamps", after: '  include Mongoid::Document'
+#gsub_file 'app/models/user.rb', "  field :email, type: String\n", ""
+#gsub_file 'app/models/user.rb', "  field :sign_in_count, type: Integer\n", ""
+#gsub_file 'app/models/user.rb', "  field :current_sign_in_at, type: Time\n", ""
+#gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
+#gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
+#gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
+
+inject_into_file 'app/views/users/index.html.haml', after: /^    %th Last name/ do
+<<-CODE
+
+    %th Email
+    %th Sign in count
+    %th Current sign in at
+    %th Last sign in at
+    %th Current sign in ip
+    %th Last sign in ip
+CODE
+end
+inject_into_file 'app/views/users/index.html.haml', after: /^      %td= user.last_name/ do
+<<-CODE
+
+      %td= user.email
+      %td= user.sign_in_count
+      %td= user.current_sign_in_at
+      %td= user.last_sign_in_at
+      %td= user.current_sign_in_ip
+      %td= user.last_sign_in_ip
+CODE
+end
+
 git add: "-A"
 git commit: %Q{ -m 'add homepage view and root route' }
 
@@ -336,15 +370,7 @@ end
 run "bundle exec guard init rspec"
 
 
-# User
-
-inject_into_file 'app/models/user.rb', "\n  include Mongoid::Timestamps", after: '  include Mongoid::Document'
-gsub_file 'app/models/user.rb', "  field :email, type: String\n", ""
-gsub_file 'app/models/user.rb', "  field :sign_in_count, type: Integer\n", ""
-gsub_file 'app/models/user.rb', "  field :current_sign_in_at, type: Time\n", ""
-gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
-gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
-gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
+# CanCan
 
 inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
 <<-CODE
@@ -357,7 +383,7 @@ end
 
 # AccessLog
 
-generate 'scaffold', 'access_log', 'time:time', 'host:string', 'http:string', 'path:string', 'apptime:integer'
+generate 'scaffold', 'access_log', 'date:time', 'host:string', 'http:string', 'path:string', 'time:integer'
 
 inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
 <<-CODE
@@ -372,8 +398,8 @@ inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
 
     if user_signed_in?
       log = AccessLog.new
-      log.time = time_a
-      log.apptime = (time_b.to_r - time_a.to_r) * 1000
+      log.date = time_a
+      log.time = (time_b.to_r - time_a.to_r) * 1000
       log.path = request.original_fullpath
       log.http = request.request_method
       log.host = request.remote_ip
@@ -395,8 +421,9 @@ CODE
 end
 
 gsub_file 'app/controllers/access_logs_controller.rb', 'AccessLog.all', 'AccessLog.includes(:user).all'
-inject_into_file 'app/views/access_logs/index.html.haml', "\n    %th User", after: '%th Time'
-inject_into_file 'app/views/access_logs/index.html.haml', "\n      %td= access_log.user.email", after: '%td= access_log.time'
+gsub_file 'app/views/access_logs/show.json.jbuilder', ', :created_at, :updated_at', ''
+inject_into_file 'app/views/access_logs/index.html.haml', "\n    %th User", after: '%th Date'
+inject_into_file 'app/views/access_logs/index.html.haml', "\n      %td= access_log.user.email", after: '%td= access_log.date'
 
 
 # Log
@@ -408,6 +435,7 @@ inject_into_file 'config/environments/development.rb', before: /^end/ do
   Moped.logger.level = Logger::DEBUG
 CODE
 end
+
 
 git add: "-A"
 git commit: %Q{ -m 'add guard' }
