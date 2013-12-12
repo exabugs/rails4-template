@@ -32,6 +32,9 @@ end
 
 # Localization
 
+inject_into_file 'config/application.rb', "\n  config.autoload_paths += %W(#__{config.root}/lib)\n", after: 'class Application < Rails::Application'
+gsub_file 'config/application.rb', '#__', '#'
+
 create_file 'config/initializers/time_formats.rb' do
 <<-CODE
 Time::DATE_FORMATS[:default] = '%Y-%m-%d %H:%M:%S'
@@ -385,7 +388,7 @@ inject_into_file 'app/models/access_log.rb', before: /^end/ do
 <<-CODE
   belongs_to :user
 
-  default_scope order_by(:time => :desc).limit(15)
+  default_scope order_by(:date => :desc).limit(15)
 CODE
 end
 
@@ -410,6 +413,7 @@ run 'bundle install'
 
 run 'rails g uploader photo'
 gsub_file 'app/uploaders/photo_uploader.rb', '# include CarrierWave::MiniMagick', 'include CarrierWave::MiniMagick'
+gsub_file 'app/uploaders/photo_uploader.rb', 'storage :file', 'storage :grid_fs'
 gsub_file 'app/uploaders/photo_uploader.rb', 'uploads/#{model.class.to_s.underscore}', '#{model.class.to_s.underscore}'
 inject_into_file 'app/models/user.rb', "\n  mount_uploader :photo, PhotoUploader\n", before: /^end/
 gsub_file 'app/controllers/users_controller.rb', 'require(:user).permit(', 'require(:user).permit(:photo, '
