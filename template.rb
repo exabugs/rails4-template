@@ -276,13 +276,7 @@ Dir["app/views/devise/**/*.erb"].each do |file|
   erb_to_haml(file)
 end
 
-inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
-<<-CODE
-
-  before_filter :authenticate_user!
-CODE
-end
-
+inject_into_file 'app/controllers/application_controller.rb', "\n  before_filter :authenticate_user!\n", before: /^end/
 get "https://raw.github.com/Junsuke/miscellaneous/master/devise.ja.yml", "config/locales/devise.ja.yml"
 
 git add: "-A"
@@ -481,3 +475,5 @@ end
 # for NetBeans
 copy_file "bin/rails", "script/rails"
 
+git add: "-A"
+git commit: %Q{ -m 'modified for NetBeans' }
