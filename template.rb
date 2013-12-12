@@ -30,29 +30,7 @@ def html_to_haml(source)
   end
 end
 
-# Patch
-
-create_file 'config/initializers/bson/object_id.rb' do
-<<-CODE
-module Moped
-  module BSON
-    ObjectId = ::BSON::ObjectId
-
-    class Document < Hash
-      class << self
-        def deserialize(io, document = new)
-          __bson_load__(io, document)
-        end
-
-        def serialize(document, io = "")
-          document.__bson_dump__(io)
-        end
-      end
-    end
-  end
-end
-CODE
-end
+# Localization
 
 create_file 'config/initializers/time_formats.rb' do
 <<-CODE
@@ -74,8 +52,9 @@ remove_file "config/locales/en.yml"
 get "https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/en.yml", "config/locales/en.yml"
 get "https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.yml", "config/locales/ja.yml"
 
-# for NetBeans
-copy_file "bin/rails", "script/rails"
+git add: "-A"
+git commit: %Q{ -m 'Localization' }
+
 
 # Questions
 
@@ -162,7 +141,6 @@ environment app_generators_config
 run 'bundle install'
 
 generate 'scaffold', 'User', 'first_name:string', 'last_name:string'
-#, 'email:string', 'sign_in_count:integer', 'current_sign_in_at:time', 'last_sign_in_at:time', 'current_sign_in_ip:string', 'last_sign_in_ip:string'
 
 generate 'figaro:install'
 generate 'mongoid:config'
@@ -317,12 +295,6 @@ gsub_file 'config/routes.rb', 'devise_for :users', "devise_for :user"
 # User
 
 inject_into_file 'app/models/user.rb', "\n  include Mongoid::Timestamps", after: '  include Mongoid::Document'
-#gsub_file 'app/models/user.rb', "  field :email, type: String\n", ""
-#gsub_file 'app/models/user.rb', "  field :sign_in_count, type: Integer\n", ""
-#gsub_file 'app/models/user.rb', "  field :current_sign_in_at, type: Time\n", ""
-#gsub_file 'app/models/user.rb', "  field :last_sign_in_at, type: Time\n", ""
-#gsub_file 'app/models/user.rb', "  field :current_sign_in_ip, type: String\n", ""
-#gsub_file 'app/models/user.rb', "  field :last_sign_in_ip, type: String\n", ""
 
 inject_into_file 'app/views/users/index.html.haml', after: /^    %th Last name/ do
 <<-CODE
@@ -351,7 +323,7 @@ git add: "-A"
 git commit: %Q{ -m 'add homepage view and root route' }
 
 if install_oauth_provider
-  gem 'doorkeeper', '~> 0.7.0'
+  gem 'doorkeeper', github: 'exabugs/doorkeeper'
   run 'bundle install'
   generate 'doorkeeper:install'
   gsub_file 'config/initializers/doorkeeper.rb', /orm :active_record/, 'orm :mongoid3'
@@ -380,6 +352,9 @@ inject_into_file 'app/controllers/application_controller.rb', before: /^end/ do
   end
 CODE
 end
+
+git add: "-A"
+git commit: %Q{ -m 'add guard' }
 
 # AccessLog
 
@@ -426,6 +401,73 @@ inject_into_file 'app/views/access_logs/index.html.haml', "\n    %th User", afte
 inject_into_file 'app/views/access_logs/index.html.haml', "\n      %td= access_log.user.email", after: '%td= access_log.date'
 
 
+git add: "-A"
+git commit: %Q{ -m 'add access_log' }
+
+
+# carrierwave
+
+gem "mongoid-grid_fs", github: "ahoward/mongoid-grid_fs", branch: "master"
+gem 'carrierwave', :git => "git://github.com/jnicklas/carrierwave.git"
+gem 'carrierwave-mongoid', :require => 'carrierwave/mongoid'
+gem 'mini_magick', :git => 'git://github.com/probablycorey/mini_magick.git'
+
+run 'bundle install'
+
+run 'rails g uploader photo'
+gsub_file 'app/uploaders/photo_uploader.rb', '# include CarrierWave::MiniMagick', 'include CarrierWave::MiniMagick'
+gsub_file 'app/uploaders/photo_uploader.rb', 'uploads/#{model.class.to_s.underscore}', '#{model.class.to_s.underscore}'
+inject_into_file 'app/models/user.rb', "\n  mount_uploader :photo, PhotoUploader\n", before: /^end/
+gsub_file 'app/controllers/users_controller.rb', 'require(:user).permit(', 'require(:user).permit(:photo, '
+inject_into_file 'config/routes.rb', "\n  get '/upload/grid/*path' => 'gridfs#serve'\n", after: /resources :users/
+
+create_file 'config/initializers/carrierwave.rb' do
+<<-CODE
+CarrierWave.configure do |config|
+  config.storage = :grid_fs
+  config.grid_fs_access_url = "/upload/grid"
+end
+CODE
+end
+
+create_file 'app/controllers/gridfs_controller.rb' do
+<<-CODE
+class GridfsController < ActionController::Metal
+  def serve
+    gridfs_path = env["PATH_INFO"].gsub("/upload/grid/", "")
+    begin
+      gridfs_file = Mongoid::GridFS[gridfs_path]
+      self.response_body = gridfs_file.data
+      self.content_type = gridfs_file.content_type
+    rescue
+      self.status = :file_not_found
+      self.content_type = 'text/plain'
+      self.response_body = ''
+    end
+  end
+end
+CODE
+end
+
+inject_into_file 'app/views/users/_form.html.haml', after: "%li= msg\n\n" do
+<<-CODE
+  .field
+    = f.label :photo
+    = f.file_field :photo
+CODE
+end
+
+inject_into_file 'app/views/users/show.html.haml', after: "%p#notice= notice\n\n" do
+<<-CODE
+%p
+  %b Photo:
+  =image_tag @user.photo.to_s
+CODE
+end
+
+git add: "-A"
+git commit: %Q{ -m 'add carrierwave' }
+
 # Log
 
 inject_into_file 'config/environments/development.rb', before: /^end/ do
@@ -436,6 +478,6 @@ inject_into_file 'config/environments/development.rb', before: /^end/ do
 CODE
 end
 
+# for NetBeans
+copy_file "bin/rails", "script/rails"
 
-git add: "-A"
-git commit: %Q{ -m 'add guard' }
