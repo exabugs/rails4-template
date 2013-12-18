@@ -1,3 +1,4 @@
+# coding: utf-8
 # Git: Initialize
 git :init
 git add: "-A"
@@ -154,6 +155,8 @@ generate 'simple_form:install', '--bootstrap'
 
 gsub_file 'features/support/env.rb', /transaction/, "truncation"
 inject_into_file 'features/support/env.rb', "\n  DatabaseCleaner.orm = 'mongoid'", after: 'begin'
+
+gsub_file 'config/mongoid.yml', '# raise_not_found_error: true', 'raise_not_found_error: false'
 
 # Configure RSpec
 gsub_file 'spec/spec_helper.rb', /config.fixture_path/, '# config.fixture_path'
@@ -481,3 +484,171 @@ copy_file "bin/rails", "script/rails"
 
 git add: "-A"
 git commit: %Q{ -m 'modified for NetBeans' }
+
+
+# Tweet
+
+generate 'scaffold', 'tweet', 'content:string', 'type:integer'
+
+git add: "-A"
+git commit: %Q{ -m 'Add Tweet' }
+
+
+# Natto
+
+inject_into_file 'app/models/tweet.rb', before: /^end/ do
+<<-CODE
+  
+  field :score, type: Float
+  field :tf, type: Hash
+
+  before_save :before_save
+
+  protected
+
+  def before_save
+    self.tf = {:v => Misc::Natto.new.tf(self.content), :l => 1}
+  end
+CODE
+end
+
+inject_into_file 'app/controllers/tweets_controller.rb', after: /^  before_action .*$/ do
+<<-CODE
+
+
+  def search
+    @q = params[:q]
+
+    condition = Misc::Natto.new.condition(params[:q])
+    @words = condition.keys
+    @tweets = Tweet.where("tf.v.k" => { "$all" => @words })
+    render "index"
+    return
+  end
+
+  def similar_search
+    @q = params[:q]
+
+    map = %Q|
+      function() {
+        var sum = 0;
+        var a = this.tf.v;
+        for (var i = 0; i < a.length; i++) {
+          var info = a[i];
+          if (condition[info.k]) {
+            sum += info.w * condition[info.k];
+          }
+        }
+        if (0 < sum) emit(this._id, sum / this.tf.l);
+      }
+    |
+
+    reduce = %Q|
+      function(key, values) {
+        return values[0];
+      }
+    |
+
+    @tweets = []
+    condition = Misc::Natto.new.condition(params[:q])
+    @words = condition.keys
+    result = Tweet.all.map_reduce(map, reduce).out(inline: true).scope(condition: condition)
+    result = result.sort{|x, y| y["value"] <=> x["value"] }
+    result.each do |t|
+      tweet = Tweet.find(t["_id"])
+      if (tweet)
+        tweet.score = t["value"]
+        @tweets << tweet 
+      end
+      #p t
+    end
+
+    render "index"
+  end
+
+CODE
+end
+
+
+inject_into_file 'config/routes.rb', after: /resources :tweets/ do
+<<-CODE
+ do
+    collection { post :search }
+    collection { post :similar_search }
+  end
+
+CODE
+end
+
+inject_into_file 'app/views/tweets/index.html.haml', after: /%h1 Listing tweets/ do
+<<-CODE
+
+
+%table
+  %tr
+    %td= "Full Search"
+    %td
+      = form_tag({:action => "search"}, {:class => "tweet"}) do
+        = text_field_tag "q", @q
+        = submit_tag "Search"
+    %td= @words
+  %tr
+    %td= "Similar Search"
+    %td
+      = form_tag({:action => "similar_search"}, {:class => "tweet"}) do
+        = text_field_tag "q", @q
+        = submit_tag "Search"
+    %td= @words
+CODE
+end
+
+git add: "-A"
+git commit: %Q{ -m 'Add Tweet Search' }
+
+gem 'natto'
+
+create_file 'lib/misc/natto.rb' do
+<<-CODE
+# coding: utf-8
+require 'nkf'  
+module Misc
+  class Natto
+
+    def tf(text)
+      terms = Hash.new
+      count = 0;
+      ::Natto::MeCab.new.parse(text) do |n|
+        puts "#{n.surface}\t#{n.feature}"
+        info = n.feature.force_encoding("UTF-8")
+        if /^名詞/ =~ info && /代名詞/ !~ info
+          word = n.surface.force_encoding("UTF-8")
+          # 英数字 全角->半角, カタカナ 半角->全角
+          word = NKF.nkf('-m0Z1 -w', word)
+          word.downcase!
+          terms[word] ||= 0
+          terms[word] += 1
+          count += 1
+        end
+      end
+      ret = Array.new
+      terms.each {|key,value|
+        f = value.to_f/count
+        ret << {:k => key, :v => f, :w => f}
+      }
+      ret
+    end
+
+    def condition(text)
+      tf1 = tf(text)
+      ret = {}
+      tf1.each {|a|
+        ret[a[:k]] = a[:w]
+      }
+      ret
+    end
+
+  end
+end
+CODE
+end
+
