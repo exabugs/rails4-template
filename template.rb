@@ -488,13 +488,24 @@ git commit: %Q{ -m 'modified for NetBeans' }
 
 # Tweet
 
-generate 'scaffold', 'tweet', 'content:string', 'type:integer'
+generate 'scaffold', 'tweet', 'type:integer', 'content:string'
+
+inject_into_file 'app/views/layouts/_navigation.html.haml', after: /access_logs_path.*$/ do
+<<-CODE
+
+      %li
+        %a{href: tweets_path} Tweets
+CODE
+end
 
 git add: "-A"
 git commit: %Q{ -m 'Add Tweet' }
 
 
 # Natto
+
+gem 'natto'
+get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/natto.rb", 'lib/misc/natto.rb'
 
 inject_into_file 'app/models/tweet.rb', before: /^end/ do
 <<-CODE
@@ -576,7 +587,6 @@ inject_into_file 'config/routes.rb', after: /resources :tweets/ do
     collection { post :search }
     collection { post :similar_search }
   end
-
 CODE
 end
 
@@ -602,53 +612,9 @@ inject_into_file 'app/views/tweets/index.html.haml', after: /%h1 Listing tweets/
 CODE
 end
 
+inject_into_file 'app/views/tweets/index.html.haml', "\n    %th Score", after: /%th Content/
+inject_into_file 'app/views/tweets/index.html.haml', "\n      %td= tweet.score", after: /%td= tweet.content/
+
 git add: "-A"
 git commit: %Q{ -m 'Add Tweet Search' }
-
-gem 'natto'
-
-create_file 'lib/misc/natto.rb' do
-<<-CODE
-# coding: utf-8
-require 'nkf'  
-module Misc
-  class Natto
-
-    def tf(text)
-      terms = Hash.new
-      count = 0;
-      ::Natto::MeCab.new.parse(text) do |n|
-        puts "#{n.surface}\t#{n.feature}"
-        info = n.feature.force_encoding("UTF-8")
-        if /^名詞/ =~ info && /代名詞/ !~ info
-          word = n.surface.force_encoding("UTF-8")
-          # 英数字 全角->半角, カタカナ 半角->全角
-          word = NKF.nkf('-m0Z1 -w', word)
-          word.downcase!
-          terms[word] ||= 0
-          terms[word] += 1
-          count += 1
-        end
-      end
-      ret = Array.new
-      terms.each {|key,value|
-        f = value.to_f/count
-        ret << {:k => key, :v => f, :w => f}
-      }
-      ret
-    end
-
-    def condition(text)
-      tf1 = tf(text)
-      ret = {}
-      tf1.each {|a|
-        ret[a[:k]] = a[:w]
-      }
-      ret
-    end
-
-  end
-end
-CODE
-end
 
