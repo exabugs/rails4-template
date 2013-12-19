@@ -510,7 +510,7 @@ get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/natto.rb", '
 inject_into_file 'app/models/tweet.rb', before: /^end/ do
 <<-CODE
   
-  field :score, type: Float
+  field :similarity, type: Float
   field :tf, type: Hash
 
   before_save :before_save
@@ -529,51 +529,15 @@ inject_into_file 'app/controllers/tweets_controller.rb', after: /^  before_actio
 
   def search
     @q = params[:q]
-
-    condition = Misc::Natto.new.condition(params[:q])
-    @words = condition.keys
-    @tweets = Tweet.where("tf.v.k" => { "$all" => @words })
+    @words = Misc::Natto.to_tf_hash(@q).keys
+    @tweets = Misc::Natto.search(Tweet, @q)
     render "index"
-    return
   end
 
   def similar_search
     @q = params[:q]
-
-    map = %Q|
-      function() {
-        var sum = 0;
-        var a = this.tf.v;
-        for (var i = 0; i < a.length; i++) {
-          var info = a[i];
-          if (condition[info.k]) {
-            sum += info.w * condition[info.k];
-          }
-        }
-        if (0 < sum) emit(this._id, sum / this.tf.l);
-      }
-    |
-
-    reduce = %Q|
-      function(key, values) {
-        return values[0];
-      }
-    |
-
-    @tweets = []
-    condition = Misc::Natto.new.condition(params[:q])
-    @words = condition.keys
-    result = Tweet.all.map_reduce(map, reduce).out(inline: true).scope(condition: condition)
-    result = result.sort{|x, y| y["value"] <=> x["value"] }
-    result.each do |t|
-      tweet = Tweet.find(t["_id"])
-      if (tweet)
-        tweet.score = t["value"]
-        @tweets << tweet 
-      end
-      #p t
-    end
-
+    @words = Misc::Natto.to_tf_hash(@q).keys
+    @tweets = Misc::Natto.similar_search(Tweet, @q)
     render "index"
   end
 
@@ -612,8 +576,8 @@ inject_into_file 'app/views/tweets/index.html.haml', after: /%h1 Listing tweets/
 CODE
 end
 
-inject_into_file 'app/views/tweets/index.html.haml', "\n    %th Score", after: /%th Content/
-inject_into_file 'app/views/tweets/index.html.haml', "\n      %td= tweet.score", after: /%td= tweet.content/
+inject_into_file 'app/views/tweets/index.html.haml', "\n    %th Similarity", after: /%th Content/
+inject_into_file 'app/views/tweets/index.html.haml', "\n      %td= tweet.similarity", after: /%td= tweet.content/
 
 git add: "-A"
 git commit: %Q{ -m 'Add Tweet Search' }
