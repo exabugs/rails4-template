@@ -10,7 +10,7 @@ module Misc
 
       array = text.split(/[。、 ]/)
       mecab = ::Natto::MeCab.new(:nbest => nbest)
-      terms = Hash.new
+      terms = Hash.new(0)
       count = 0;
       
       check_0 = {"名詞"=>1}
@@ -24,27 +24,25 @@ module Misc
             #puts "ーーーーーーーーーーーーーーーーーーーーー #{n.surface}\t#{n.feature}"
             word = n.surface.force_encoding("UTF-8")
             word.downcase!
-            terms[word] ||= 0
             terms[word] += 1
             count += 1
           end
         end
       end
-      ret = Array.new
-      terms.each {|key,value|
+
+      terms.inject([]) do |ret, (key,value)|
         f = value.to_f/count
         ret << {:k => key, :v => f, :w => f}
-      }
-      ret
+        ret
+      end
+
     end
 
     def condition(text)
-      tf1 = tf(text, 1)
-      ret = {}
-      tf1.each {|a|
+      tf(text,1).inject({}) do |ret, a|
         ret[a[:k]] = a[:w]
-      }
-      ret
+        ret
+      end
     end
 
   end
