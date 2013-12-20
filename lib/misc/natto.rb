@@ -3,7 +3,7 @@ require 'nkf'
 module Misc
   class Natto
 
-    def self.tf(text, nbest = 2)
+    def self.tf(text, nbest)
 
       # 英数字 全角->半角, カタカナ 半角->全角
       text = NKF.nkf('-m0Z1 -w', text)
@@ -38,20 +38,59 @@ module Misc
 
     end
 
-    def self.to_tf_hash(text)
-      tf(text,1).inject({}) do |ret, a|
+    def self.tfidf(coll, text, nbest)
+      tf = tf(text, nbest)
+
+      cond = tf.inject({}) do |ret, a|
         ret[a[:k]] = a[:w]
+        ret
+      end
+
+      name = coll.collection_name.to_s + "_idf"
+      idf = IDF.with(collection: name).find(cond.keys).inject({}) do |ret, obj|
+        ret[obj._id] = obj.value
+        ret
+      end
+
+      l = 0
+      n = Math.log(coll.count())
+      tf.each do |obj|
+        obj[:w] = obj[:v] * (idf[obj[:k]] ? idf[obj[:k]] : n)
+        l += obj[:w] ** 2
+      end
+
+      {:v => tf, :l => Math.sqrt(l)}
+
+    end
+
+    class IDF
+      include Mongoid::Document
+      field :value, type: Float
+    end
+    
+    def self.to_array(tf)
+      tf[:v].inject([]) do |ret, obj|
+        ret << obj[:k]
         ret
       end
     end
 
-    def self.search(collection, text)
-      condition = to_tf_hash(text)
-      collection.where("tf.v.k" => { "$all" => condition.keys})
+    def self.to_hash(tf)
+      tf[:v].inject({}) do |ret, obj|
+        ret[obj[:k]] = obj[:w]
+        ret
+      end
     end
 
-    def self.similar_search(collection, text)
-      condition = to_tf_hash(text)
+    def self.search(coll, text)
+      tf = tfidf(coll, text, 1)
+      coll.where("tf.v.k" => { "$all" => to_array(tf)})
+    end
+
+    def self.similar_search(coll, text)
+
+      tf = tfidf(coll, text, 1)
+      tf[:w] = to_hash(tf)
 
       map = %Q|
         function() {
@@ -59,11 +98,11 @@ module Misc
           var a = this.tf.v;
           for (var i = 0; i < a.length; i++) {
             var info = a[i];
-            if (condition[info.k]) {
-              sum += info.w * condition[info.k];
+            if (tf.w[info.k]) {
+              sum += info.w * tf.w[info.k];
             }
           }
-          if (0 < sum) emit(this._id, sum / this.tf.l);
+          if (0 < sum) emit(this._id, sum / this.tf.l / tf.l);
         }
       |
 
@@ -73,13 +112,13 @@ module Misc
         }
       |
 
-      result = collection.where("tf.v.k" => {"$in" => condition.keys}).map_reduce(map, reduce)
-        .out(inline: true).scope(condition: condition)
+      result = coll.where("tf.v.k" => {"$in" => to_array(tf)}).map_reduce(map, reduce)
+      .out(inline: true).scope(tf: tf)
 
       result = result.sort{|x, y| y["value"] <=> x["value"] }
 
       result.inject([]) do |ret, t|
-        object = collection.find(t["_id"])
+        object = coll.find(t["_id"])
         if (object)
           object.similarity = t["value"]
           ret << object 
@@ -91,4 +130,3 @@ module Misc
 
   end
 end
-
