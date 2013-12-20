@@ -8,7 +8,7 @@ module Misc
       # 英数字 全角->半角, カタカナ 半角->全角
       text = NKF.nkf('-m0Z1 -w', text)
 
-      array = text.split(/[。、 ]/)
+      array = text.split(/[。、\s]/)
       mecab = ::Natto::MeCab.new(:nbest => nbest)
       terms = Hash.new(0)
       count = 0;
