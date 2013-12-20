@@ -518,7 +518,7 @@ inject_into_file 'app/models/tweet.rb', before: /^end/ do
   protected
 
   def before_save
-    self.tf = {:v => Misc::Natto.new.tf(self.content), :l => 1}
+    self.tf = Misc::Natto.tfidf(Tweet, self.content, 2)
   end
 CODE
 end
@@ -529,14 +529,15 @@ inject_into_file 'app/controllers/tweets_controller.rb', after: /^  before_actio
 
   def search
     @q = params[:q]
-    @words = Misc::Natto.to_tf_hash(@q).keys
+    @words = Misc::Natto.to_array(Misc::Natto.tfidf(Tweet, @q, 1))
     @tweets = Misc::Natto.search(Tweet, @q)
     render "index"
+    return
   end
 
   def similar_search
     @q = params[:q]
-    @words = Misc::Natto.to_tf_hash(@q).keys
+    @words = Misc::Natto.to_array(Misc::Natto.tfidf(Tweet, @q, 1))
     @tweets = Misc::Natto.similar_search(Tweet, @q)
     render "index"
   end
