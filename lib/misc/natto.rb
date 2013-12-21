@@ -31,20 +31,15 @@ module Misc
       end
 
       terms.inject([]) do |ret, (key,value)|
-        f = value.to_f/count
-        ret << {:k => key, :v => f, :w => f}
-        ret
+        ret << {:k => key, :v => value.to_f/count}
+        #ret
       end
 
     end
 
     def self.tfidf(coll, text, nbest)
       tf = tf(text, nbest)
-
-      cond = tf.inject({}) do |ret, a|
-        ret[a[:k]] = a[:w]
-        ret
-      end
+      cond = to_hash(tf)
 
       name = coll.collection_name.to_s + "_idf"
       idf = IDF.with(collection: name).find(cond.keys).inject({}) do |ret, obj|
@@ -69,14 +64,14 @@ module Misc
     end
     
     def self.to_array(tf)
-      tf[:v].inject([]) do |ret, obj|
+      tf.inject([]) do |ret, obj|
         ret << obj[:k]
-        ret
+        #ret
       end
     end
 
     def self.to_hash(tf)
-      tf[:v].inject({}) do |ret, obj|
+      tf.inject({}) do |ret, obj|
         ret[obj[:k]] = obj[:w]
         ret
       end
@@ -84,13 +79,13 @@ module Misc
 
     def self.search(coll, text)
       tf = tfidf(coll, text, 1)
-      coll.where("tf.v.k" => { "$all" => to_array(tf)})
+      coll.where("tf.v.k" => { "$all" => to_array(tf[:v])})
     end
 
     def self.similar_search(coll, text)
 
       tf = tfidf(coll, text, 1)
-      tf[:w] = to_hash(tf)
+      tf[:w] = to_hash(tf[:v])
 
       map = %Q|
         function() {
@@ -112,7 +107,7 @@ module Misc
         }
       |
 
-      result = coll.where("tf.v.k" => {"$in" => to_array(tf)}).map_reduce(map, reduce)
+      result = coll.where("tf.v.k" => {"$in" => to_array(tf[:v])}).map_reduce(map, reduce)
       .out(inline: true).scope(tf: tf)
 
       result = result.sort{|x, y| y["value"] <=> x["value"] }

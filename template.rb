@@ -529,7 +529,7 @@ inject_into_file 'app/controllers/tweets_controller.rb', after: /^  before_actio
 
   def search
     @q = params[:q]
-    @words = Misc::Natto.to_array(Misc::Natto.tfidf(Tweet, @q, 1))
+    @words = Misc::Natto.to_array(Misc::Natto.tf(@q, 1))
     @tweets = Misc::Natto.search(Tweet, @q)
     render "index"
     return
@@ -537,14 +537,12 @@ inject_into_file 'app/controllers/tweets_controller.rb', after: /^  before_actio
 
   def similar_search
     @q = params[:q]
-    @words = Misc::Natto.to_array(Misc::Natto.tfidf(Tweet, @q, 1))
+    @words = Misc::Natto.to_array(Misc::Natto.tf(@q, 1))
     @tweets = Misc::Natto.similar_search(Tweet, @q)
     render "index"
   end
-
 CODE
 end
-
 
 inject_into_file 'config/routes.rb', after: /resources :tweets/ do
 <<-CODE
