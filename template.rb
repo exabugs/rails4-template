@@ -1,6 +1,16 @@
 # coding: utf-8
 # Git: Initialize
 git :init
+
+append_file '.gitignore' do
+<<-CODE
+*.lock
+
+# Ignore vendor bundle.
+vendor/bundle
+CODE
+end
+
 git add: "-A"
 git commit: %Q{ -m 'Rails4 scaffold' }
 
