@@ -587,6 +587,8 @@ end
 
 inject_into_file 'app/views/tweets/index.html.haml', "\n    %th Similarity", after: /%th Content/
 inject_into_file 'app/views/tweets/index.html.haml', "\n      %td= tweet.similarity", after: /%td= tweet.content/
+gsub_file 'app/views/tweets/index.html.haml', "tweet.content", "highlight(tweet.content, @words)"
+
 
 git add: "-A"
 git commit: %Q{ -m 'Add Tweet Search' }
