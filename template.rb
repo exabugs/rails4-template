@@ -167,6 +167,8 @@ gsub_file 'features/support/env.rb', /transaction/, "truncation"
 inject_into_file 'features/support/env.rb', "\n  DatabaseCleaner.orm = 'mongoid'", after: 'begin'
 
 gsub_file 'config/mongoid.yml', '# raise_not_found_error: true', 'raise_not_found_error: false'
+gsub_file 'config/mongoid.yml', /database: .+_development/, "database: #{app_long_name}_development"
+gsub_file 'config/mongoid.yml', /database: .+_test/, "database: #{app_long_name}_test"
 
 # Configure RSpec
 gsub_file 'spec/spec_helper.rb', /config.fixture_path/, '# config.fixture_path'
@@ -420,12 +422,14 @@ git commit: %Q{ -m 'add access_log' }
 gem "mongoid-grid_fs", github: "ahoward/mongoid-grid_fs", branch: "master"
 gem 'carrierwave', :git => "git://github.com/jnicklas/carrierwave.git"
 gem 'carrierwave-mongoid', :require => 'carrierwave/mongoid'
-gem 'mini_magick', :git => 'git://github.com/probablycorey/mini_magick.git'
+#gem 'mini_magick', :git => 'git://github.com/probablycorey/mini_magick.git'
+gem 'rmagick'
 
 run 'bundle install'
 
 run 'rails g uploader photo'
-gsub_file 'app/uploaders/photo_uploader.rb', '# include CarrierWave::MiniMagick', 'include CarrierWave::MiniMagick'
+#gsub_file 'app/uploaders/photo_uploader.rb', '# include CarrierWave::MiniMagick', 'include CarrierWave::MiniMagick'
+gsub_file 'app/uploaders/photo_uploader.rb', '# include CarrierWave::RMagick', 'include CarrierWave::RMagick'
 gsub_file 'app/uploaders/photo_uploader.rb', 'storage :file', 'storage :grid_fs'
 gsub_file 'app/uploaders/photo_uploader.rb', 'uploads/#{model.class.to_s.underscore}', '#{model.class.to_s.underscore}'
 inject_into_file 'app/models/user.rb', "\n  mount_uploader :photo, PhotoUploader\n", before: /^end/
