@@ -78,12 +78,13 @@ module Misc
     end
 
     def self.search(coll, text)
+      coll = coll.unscoped
       tf = tfidf(coll, text, 1)
       coll.where("tf.v.k" => { "$all" => to_array(tf[:v])})
     end
 
     def self.similar_search(coll, text)
-
+      coll = coll.unscoped
       tf = tfidf(coll, text, 1)
       tf[:w] = to_hash(tf[:v])
 
@@ -125,3 +126,4 @@ module Misc
 
   end
 end
+
