@@ -109,9 +109,7 @@ module Misc
       |
 
       result = coll.where("tf.v.k" => {"$in" => to_array(tf[:v])}).map_reduce(map, reduce)
-      .out(inline: true).scope(tf: tf)
-
-      result = result.sort{|x, y| y["value"] <=> x["value"] }
+      .out(inline: true).scope(tf: tf).sort{|x, y| y["value"] <=> x["value"] }
 
       result.inject([]) do |ret, t|
         object = coll.find(t["_id"])
