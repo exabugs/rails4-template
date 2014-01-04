@@ -79,14 +79,16 @@ module Misc
       # y軸 メモリ
       0.upto(max_div) do |i|
         lv = i * k[bar-1]
-        
-        sprintf("%.*f", 5, lv)
         rv = i * k[dim-1]
+
+        lvf = [0, k[bar-1]].min.abs
+        rvf = [0, k[dim-1]].min.abs
+
         y = lv * h[bar-1]
      #   dr.stroke_dasharray(1.5,1.5)
         dr.line(@@annotate_color, 0, y, @width, y)
-        dr.annotate(@@annotate_color, 0, 0,        0, y, lv.to_s, 1)
-        dr.annotate(@@annotate_color, 0, 0, @width+2, y, rv.to_s, 2)
+        dr.annotate(@@annotate_color, 0, 0,        0, y, sprintf("%.*f", lvf, lv), 1)
+        dr.annotate(@@annotate_color, 0, 0, @width+2, y, sprintf("%.*f", rvf, rv), 2)
      #  dr.annotate(@@annotate_color, 0, 0,-@width+2, y, rv.to_s, 1)
       end
 
@@ -115,9 +117,9 @@ module Misc
         label = x_label(key,type)
         if label.to_i % step == 0 then
           x__ = x + w2/2 + 1
-          dr.annotate(@@annotate_color, 0, 0, x__,   0, label, 0)
+          dr.annotate(@@annotate_color, 0, 0, x__,  -3, label, 0)
           label = x_label(key,type-1)
-          dr.annotate(@@annotate_color, 0, 0, x__, -11, label, 0) if label != prev_label
+          dr.annotate(@@annotate_color, 0, 0, x__, -14, label, 0) if label != prev_label
           prev_label = label
         end
 
@@ -174,4 +176,5 @@ module Misc
   end
 
 end
+
 
