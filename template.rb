@@ -624,8 +624,14 @@ get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/counter.rb",
 get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/image.rb", 'lib/misc/image.rb'
 get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/graph.rb", 'lib/misc/graph.rb'
 
-inject_into_file 'config/routes.rb', after: /resources :access_logs/ do
+inject_into_file 'config/routes.rb', before: /resources :access_logs/ do
 <<-CODE
+
   get '/access_logs/graph(/:year(/:month(/:day)))'  => "access_logs#graph"
+
 CODE
 end
+
+git add: "-A"
+git commit: %Q{ -m 'Add Log Graph.' }
+
