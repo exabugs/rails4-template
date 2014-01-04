@@ -422,8 +422,7 @@ git commit: %Q{ -m 'add access_log' }
 gem "mongoid-grid_fs", github: "ahoward/mongoid-grid_fs", branch: "master"
 gem 'carrierwave', :git => "git://github.com/jnicklas/carrierwave.git"
 gem 'carrierwave-mongoid', :require => 'carrierwave/mongoid'
-#gem 'mini_magick', :git => 'git://github.com/probablycorey/mini_magick.git'
-gem 'rmagick'
+gem "rmagick", :require => false
 
 run 'bundle install'
 
@@ -597,3 +596,36 @@ gsub_file 'app/views/tweets/index.html.haml', "tweet.content", "highlight(tweet.
 git add: "-A"
 git commit: %Q{ -m 'Add Tweet Search' }
 
+inject_into_file 'app/controllers/access_logs_controller.rb', after: /before_action .*$/ do
+<<-CODE
+
+  def graph
+
+    type = 3
+    max = Time.now
+    min = max - 60*60*12
+    dim = 4
+    bar = 3
+
+    range = Misc::Counter.graph(AccessLog, min, max, type, dim)
+    puts range
+
+    graph = Misc::Graph.new(800, 600, 40)
+
+    graph.line(range, dim, bar, type)
+
+    send_data(graph.to_blob, :type => 'image/png', :disposition=>'inline')
+  end
+
+CODE
+end
+
+get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/counter.rb", 'lib/misc/counter.rb'
+get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/image.rb", 'lib/misc/image.rb'
+get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/graph.rb", 'lib/misc/graph.rb'
+
+inject_into_file 'config/routes.rb', after: /resources :access_logs/ do
+<<-CODE
+  get '/access_logs/graph(/:year(/:month(/:day)))'  => "access_logs#graph"
+CODE
+end
