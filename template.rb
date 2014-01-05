@@ -623,6 +623,8 @@ end
 get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/counter.rb", 'lib/misc/counter.rb'
 get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/image.rb", 'lib/misc/image.rb'
 get "https://raw.github.com/exabugs/rails4-template/master/lib/misc/graph.rb", 'lib/misc/graph.rb'
+get "https://raw.github.com/exabugs/rails4-template/master/lib/fonts/meiryo.ttc", 'lib/fonts/meiryo.ttc'
+get "https://raw.github.com/exabugs/rails4-template/master/lib/fonts/meiryob.ttc", 'lib/fonts/meiryob.ttc'
 
 inject_into_file 'config/routes.rb', before: /resources :access_logs/ do
 <<-CODE
