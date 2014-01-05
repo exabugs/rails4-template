@@ -53,11 +53,13 @@ module Misc
       h = Array.new(dim) # 値:ピクセル の比率
       p = Array.new(dim) # 折れ線グラフの点
       k = Array.new(dim) # 桁
+      l = Array.new(dim) # 桁
 
 
       # y軸 調整
       0.upto(dim-1) do |i|
-        k[i] = 10.0 ** Math.log10(max[i]).floor
+        l[i] = Math.log10(max[i]).floor
+        k[i] = 10.0 ** l[i]
         max[i] = (max[i] / k[i]).ceil * k[i]
 
         # 分割数 調整 (分割数を 6〜10 に調整する)
@@ -81,12 +83,13 @@ module Misc
         lv = i * k[bar-1]
         rv = i * k[dim-1]
 
-        lvf = [0, k[bar-1]].min.abs
-        rvf = [0, k[dim-1]].min.abs
+        lvf = [0, l[bar-1]-1].min.abs # 小数以下表示桁数
+        rvf = [0, l[dim-1]-1].min.abs # 小数以下表示桁数
 
         y = lv * h[bar-1]
-     #   dr.stroke_dasharray(1.5,1.5)
+        dr.stroke_dasharray(1,2) if (lv % (10 ** l[bar-1]) != 0)
         dr.line(@@annotate_color, 0, y, @width, y)
+        dr.stroke_dasharray()
         dr.annotate(@@annotate_color, 0, 0,        0, y, sprintf("%.*f", lvf, lv), 1)
         dr.annotate(@@annotate_color, 0, 0, @width+2, y, sprintf("%.*f", rvf, rv), 2)
      #  dr.annotate(@@annotate_color, 0, 0,-@width+2, y, rv.to_s, 1)
