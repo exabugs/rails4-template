@@ -9,7 +9,8 @@ module Misc
       '#00ffff',
       '#0000ff',
     ]
-    
+    @@x_axis = ["年", "月", "日", "時", "分"]
+
     @@annotate_color = '#333333'
 
     def initialize(width, height, margin)
@@ -92,11 +93,15 @@ module Misc
         dr.stroke_dasharray()
         dr.annotate(@@annotate_color, 0, 0,        0, y, sprintf("%.*f", lvf, lv), 1)
         dr.annotate(@@annotate_color, 0, 0, @width+2, y, sprintf("%.*f", rvf, rv), 2)
-     #  dr.annotate(@@annotate_color, 0, 0,-@width+2, y, rv.to_s, 1)
+        #  dr.annotate(@@annotate_color, 0, 0,-@width+2, y, rv.to_s, 1)
       end
+      
+      dr.annotate(@@annotate_color, 0, 0, @width+2,  -12, @@x_axis[type  ], 2)
+      dr.annotate(@@annotate_color, 0, 0, @width+2,  -24, @@x_axis[type-1], 2)
+      
 
       # x軸の間引き
-      step = to_yakusuu((20.0 / w_).ceil, type)
+      step = to_yakusuu((17.4 / w_).ceil, type)
       prev_label = ""
 
       range.each.with_index(0) do |(key, value), i|
@@ -119,7 +124,7 @@ module Misc
         # x軸 メモリ
         label = x_label(key,type)
         if label.to_i % step == 0 then
-          x__ = x + w2/2 + 1
+          x__ = x + w2/2 + 2
           dr.annotate(@@annotate_color, 0, 0, x__,  -3, label, 0)
           label = x_label(key,type-1)
           dr.annotate(@@annotate_color, 0, 0, x__, -14, label, 0) if label != prev_label
