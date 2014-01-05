@@ -18,6 +18,11 @@ module Misc
       @h = @image.margin + @image.height
       @w = @image.margin
       self.font = 'lib/fonts/meiryo.ttc'
+      @annotate_info = [
+        [Magick::NorthGravity, @image.columns/2, 0],
+        [Magick::EastGravity, -@image.width, @image.rows/2],
+        [Magick::WestGravity, 0, @image.rows/2],
+      ]
     end
     def line(color, x0, y0, x1, y1)
       fill('transparent')
@@ -46,16 +51,11 @@ module Misc
     def text(x,y,text)
       super(@w+x, @h-y, text)
     end
-    
-    def annotate(color, width, height, x, y, text, type)
-      #puts width.to_s + " " + height.to_s + " " + x.to_s + " " + y.to_s + " " + text
-      info = [
-        [Magick::NorthGravity, @image.columns/2, 0],
-        [Magick::EastGravity, -@image.width, @image.rows/2],
-        [Magick::WestGravity, 0, @image.rows/2],
-      ]
-      super(@image, width, height, @w+x-info[type][1], @h-y-info[type][2], text) {
-        self.gravity = info[type][0]
+
+    def annotate(color, x, y, text, type)
+      info = @annotate_info[type]
+      super(@image, 0, 0, @w+x-info[1], @h-y-info[2], text) {
+        self.gravity = info[0]
         self.fill = color
       }
     end
@@ -76,4 +76,5 @@ module Misc
     #    end
   end
 end
+
 

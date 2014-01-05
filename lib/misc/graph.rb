@@ -91,13 +91,13 @@ module Misc
         dr.stroke_dasharray(1,2) if (lv % (10 ** l[bar-1]) != 0)
         dr.line(@@annotate_color, 0, y, @width, y)
         dr.stroke_dasharray()
-        dr.annotate(@@annotate_color, 0, 0,        0, y, sprintf("%.*f", lvf, lv), 1)
-        dr.annotate(@@annotate_color, 0, 0, @width+2, y, sprintf("%.*f", rvf, rv), 2)
-        #  dr.annotate(@@annotate_color, 0, 0,-@width+2, y, rv.to_s, 1)
+        dr.annotate(@@annotate_color,        0, y, sprintf("%.*f", lvf, lv), 1)
+        dr.annotate(@@annotate_color, @width+2, y, sprintf("%.*f", rvf, rv), 2)
+    #   dr.annotate(@@annotate_color,-@width+2, y, rv.to_s, 1)
       end
       
-      dr.annotate(@@annotate_color, 0, 0, @width+2,  -12, @@x_axis[type  ], 2)
-      dr.annotate(@@annotate_color, 0, 0, @width+2,  -24, @@x_axis[type-1], 2)
+      dr.annotate(@@annotate_color, @width+2,  -12, @@x_axis[type  ], 2)
+      dr.annotate(@@annotate_color, @width+2,  -24, @@x_axis[type-1], 2)
       
 
       # x軸の間引き
@@ -125,9 +125,9 @@ module Misc
         label = x_label(key,type)
         if label.to_i % step == 0 then
           x__ = x + w2/2 + 2
-          dr.annotate(@@annotate_color, 0, 0, x__,  -3, label, 0)
+          dr.annotate(@@annotate_color, x__,  -3, label, 0)
           label = x_label(key,type-1)
-          dr.annotate(@@annotate_color, 0, 0, x__, -14, label, 0) if label != prev_label
+          dr.annotate(@@annotate_color, x__, -14, label, 0) if label != prev_label
           prev_label = label
         end
 
